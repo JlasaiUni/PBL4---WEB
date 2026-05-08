@@ -10,6 +10,7 @@ import java.util.Optional;
 public interface PostService {
     Post create(PostDTOs.CreatePostRequest request, String authorUsername);
     Optional<Post> findById(Long id);
+    Optional<PostDTOs.PostResponse> findResponseById(Long id);
     Page<PostDTOs.PostResponse> findPublished(Pageable pageable);
     Page<PostDTOs.PostResponse> search(String query, Pageable pageable);
     Post update(Long id, PostDTOs.CreatePostRequest request, String currentUsername);

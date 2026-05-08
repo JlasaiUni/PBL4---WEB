@@ -66,7 +66,7 @@ public class DashboardController {
 
     @GetMapping("/posts/{id}")
     public String viewPost(@PathVariable Long id, Model model) {
-        postService.findById(id).ifPresent(p -> model.addAttribute("post", postService.toResponse(p)));
+        postService.findResponseById(id).ifPresent(p -> model.addAttribute("post", p));
         return "user/post-detail";
     }
 

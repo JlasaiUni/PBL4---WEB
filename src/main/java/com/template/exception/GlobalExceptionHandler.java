@@ -13,25 +13,12 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-// ── Excepciones personalizadas ────────────────────────────────
+// ── Handler global para la API REST (devuelve JSON) ───────────
+// Sólo aplica a controladores anotados con @RestController, es decir,
+// las rutas /api/**. Las rutas MVC (Thymeleaf) las gestiona
+// MvcExceptionHandler, que renderiza vistas error/*.html.
 
-class ResourceNotFoundException extends RuntimeException {
-    public ResourceNotFoundException(String resource, String field, Object value) {
-        super(String.format("%s no encontrado con %s: '%s'", resource, field, value));
-    }
-}
-
-class BadRequestException extends RuntimeException {
-    public BadRequestException(String message) { super(message); }
-}
-
-class UnauthorizedException extends RuntimeException {
-    public UnauthorizedException(String message) { super(message); }
-}
-
-// ── Handler global ────────────────────────────────────────────
-
-@RestControllerAdvice
+@RestControllerAdvice(annotations = org.springframework.web.bind.annotation.RestController.class)
 @Slf4j
 public class GlobalExceptionHandler {
 

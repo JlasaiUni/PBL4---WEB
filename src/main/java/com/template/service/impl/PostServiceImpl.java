@@ -68,6 +68,14 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<PostDTOs.PostResponse> findResponseById(Long id) {
+        // Convertimos a DTO dentro de la misma transacción para evitar
+        // LazyInitializationException al acceder a author/tags/comments.
+        return postRepository.findById(id).map(this::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Page<PostDTOs.PostResponse> findPublished(Pageable pageable) {
         return postRepository.findByPublishedTrueOrderByCreatedAtDesc(pageable)
                 .map(this::toResponse);

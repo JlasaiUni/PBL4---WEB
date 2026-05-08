@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Búsqueda')}"></head>
+<body class="bg-light-custom">
+
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<section class="py-5">
+    <div class="container">
+        <h2 class="mb-4">
+            Resultados para
+            <span class="text-primary-custom" th:text="'&quot;' + ${query} + '&quot;'">query</span>
+        </h2>
+
+        <div th:if="${results.empty}" class="alert alert-info">
+            No se encontraron posts para tu búsqueda.
+        </div>
+
+        <div class="list-group">
+            <a th:each="post : ${results.content}"
+               th:href="@{'/posts/' + ${post.id}}"
+               class="list-group-item list-group-item-action card-hover">
+                <h5 th:text="${post.title}">Título</h5>
+                <p class="mb-1 text-muted small"
+                   th:text="${#strings.abbreviate(post.content, 200)}">extracto</p>
+                <small>
+                    Por <span th:text="${post.authorUsername}">autor</span> ·
+                    <span th:text="${#temporals.format(post.createdAt, 'dd/MM/yyyy')}">fecha</span>
+                </small>
+            </a>
+        </div>
+    </div>
+</section>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

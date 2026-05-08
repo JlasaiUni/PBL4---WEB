@@ -35,8 +35,8 @@ public class PostApiController {
 
     @GetMapping("/posts/{id}")
     public ResponseEntity<PostDTOs.PostResponse> getPost(@PathVariable Long id) {
-        return postService.findById(id)
-                .map(p -> ResponseEntity.ok(postService.toResponse(p)))
+        return postService.findResponseById(id)
+                .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 

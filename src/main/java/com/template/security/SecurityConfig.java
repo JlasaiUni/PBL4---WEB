@@ -1,7 +1,5 @@
-package com.template.config;
+package com.template.security;
 
-import com.template.security.JwtAuthenticationFilter;
-import com.template.security.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

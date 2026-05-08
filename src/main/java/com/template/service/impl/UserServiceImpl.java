@@ -61,7 +61,15 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     @Cacheable("users")
     public Optional<User> findByUsername(String username) {
-        return userRepository.findByUsername(username);
+        return userRepository.findByUsername(username)
+                .map(u -> {
+                    // Forzar inicialización de colecciones lazy
+                    // mientras la sesión Hibernate está abierta,
+                    // para que la vista pueda recorrerlas sin LazyInitializationException.
+                    u.getRoles().size();
+                    u.getPosts().size();
+                    return u;
+                });
     }
 
     @Override

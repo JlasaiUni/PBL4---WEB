@@ -3,44 +3,43 @@ package com.template.dto;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
-// ── Auth DTOs ─────────────────────────────────────────────────
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
-public class AuthDTOs {
+// ── Post DTOs ─────────────────────────────────────────────────
 
-    @Getter @Setter
-    public static class LoginRequest {
-        @NotBlank(message = "El usuario o email es obligatorio")
-        private String usernameOrEmail;
-
-        @NotBlank(message = "La contraseña es obligatoria")
-        private String password;
-    }
+public class PostDTOs {
 
     @Getter @Setter
-    public static class RegisterRequest {
-        @NotBlank
-        @Size(min = 3, max = 50)
-        private String username;
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CreatePostRequest {
 
-        @NotBlank
-        @Email(message = "Email no válido")
-        private String email;
+        @NotBlank(message = "El título es obligatorio")
+        @Size(min = 3, max = 200, message = "El título debe tener entre 3 y 200 caracteres")
+        private String title;
 
-        @NotBlank
-        @Size(min = 6, max = 40, message = "La contraseña debe tener entre 6 y 40 caracteres")
-        private String password;
+        @NotBlank(message = "El contenido es obligatorio")
+        private String content;
 
-        @NotBlank
-        private String fullName;
+        private boolean published;
+
+        private Set<String> tags = new HashSet<>();
     }
 
     @Getter @Setter @Builder
     @NoArgsConstructor @AllArgsConstructor
-    public static class JwtResponse {
-        private String token;
-        private String type = "Bearer";
-        private String username;
-        private String email;
-        private java.util.List<String> roles;
+    public static class PostResponse {
+        private Long id;
+        private String title;
+        private String content;
+        private boolean published;
+        private String authorUsername;
+        private String authorFullName;
+        private Set<String> tags;
+        private int commentCount;
+        private LocalDateTime createdAt;
+        private LocalDateTime updatedAt;
     }
 }

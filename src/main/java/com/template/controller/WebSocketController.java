@@ -1,4 +1,4 @@
-package com.template.websocket;
+package com.template.controller;
 
 import com.template.service.impl.PostServiceImpl;
 import lombok.*;
