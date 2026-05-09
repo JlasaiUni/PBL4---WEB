@@ -1,6 +1,6 @@
 package com.template.service.impl;
 
-import com.template.dto.AuthDTOs;
+import com.template.dto.RegisterRequest;
 import com.template.entity.Role;
 import com.template.entity.User;
 import com.template.exception.BadRequestException;
@@ -15,8 +15,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -29,68 +31,51 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
-    public User register(AuthDTOs.RegisterRequest request) {
-        // Validaciones de negocio
+    public User register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new BadRequestException("El nombre de usuario ya existe: " + request.getUsername());
+            throw new BadRequestException("El nombre de usuario ya esta en uso: " + request.getUsername());
         }
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BadRequestException("El email ya está registrado: " + request.getEmail());
+            throw new BadRequestException("El email ya esta registrado: " + request.getEmail());
         }
 
-        // Rol por defecto: ROLE_USER
         Role userRole = roleRepository.findByName(Role.ERole.ROLE_USER)
-                .orElseThrow(() -> new RuntimeException("Rol USER no encontrado en BD. Ejecuta las migraciones Flyway."));
+                .orElseGet(() -> roleRepository.save(new Role(Role.ERole.ROLE_USER)));
+
+        Set<Role> roles = new HashSet<>();
+        roles.add(userRole);
 
         User user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
-                .enabled(true)
+                .roles(roles)
                 .build();
 
-        user.addRole(userRole);
-
         User saved = userRepository.save(user);
-        log.info("Nuevo usuario registrado: {}", saved.getUsername());
+        log.info("Usuario registrado: {}", saved.getUsername());
         return saved;
     }
 
+
     @Override
     @Transactional(readOnly = true)
+    public Optional<User> findByUsernameWithPosts(String username) {
+        return userRepository.findByUsernameWithPosts(username);
+    }
+
+    @Override
     @Cacheable("users")
+    @Transactional(readOnly = true)
     public Optional<User> findByUsername(String username) {
-        return userRepository.findByUsername(username)
-                .map(u -> {
-                    // Forzar inicialización de colecciones lazy
-                    // mientras la sesión Hibernate está abierta,
-                    // para que la vista pueda recorrerlas sin LazyInitializationException.
-                    u.getRoles().size();
-                    u.getPosts().size();
-                    return u;
-                });
+        return userRepository.findByUsername(username);
     }
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable("users")
     public Optional<User> findById(Long id) {
         return userRepository.findById(id);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    @Cacheable("users")
-    public List<User> findAll() {
-        return userRepository.findAll();
-    }
-
-    @Override
-    @CacheEvict(value = "users", allEntries = true)
-    public void deleteById(Long id) {
-        userRepository.deleteById(id);
-        log.info("Usuario eliminado con id: {}", id);
     }
 
     @Override
@@ -103,5 +88,18 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<User> findAll() {
+        return userRepository.findAll();
+    }
+
+    @Override
+    @CacheEvict(value = "users", allEntries = true)
+    public void deleteById(Long id) {
+        userRepository.deleteById(id);
+        log.info("Usuario eliminado: {}", id);
     }
 }

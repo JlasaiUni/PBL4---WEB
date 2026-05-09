@@ -31,45 +31,37 @@
 
         <div class="row g-4">
             <div th:each="post : ${posts.content}" class="col-md-6 col-lg-4">
-                <div class="card card-hover h-100 shadow-sm">
+                <article class="card card-hover h-100 shadow-sm"
+                         th:attr="aria-label='Post: ' + ${post.title}">
                     <div class="card-body">
                         <h5 class="card-title" th:text="${post.title}">Título</h5>
                         <p class="card-text text-muted small">
-                            <i class="bi bi-person"></i>
+                            <i class="bi bi-person" aria-hidden="true"></i>
                             <span th:text="${post.authorFullName} ?: ${post.authorUsername}">Autor</span>
                             ·
-                            <i class="bi bi-clock"></i>
-                            <span th:text="${#temporals.format(post.createdAt, 'dd/MM/yyyy')}">fecha</span>
+                            <i class="bi bi-clock" aria-hidden="true"></i>
+                            <time th:datetime="${post.createdAt}"
+                                  th:text="${#temporals.format(post.createdAt, 'dd/MM/yyyy')}">fecha</time>
                         </p>
                         <p class="card-text"
                            th:text="${#strings.abbreviate(post.content, 120)}">Contenido...</p>
-                        <div class="mb-3">
+                        <div class="mb-3" aria-label="Etiquetas">
                             <span th:each="tag : ${post.tags}"
                                   class="badge bg-secondary me-1"
                                   th:text="${tag}">tag</span>
                         </div>
-                        <a th:href="@{'/posts/' + ${post.id}}" class="btn btn-primary-custom btn-sm">
-                            Leer más <i class="bi bi-arrow-right"></i>
+                        <a th:href="@{'/posts/' + ${post.id}}"
+                           class="btn btn-primary-custom btn-sm"
+                           th:attr="aria-label='Leer más sobre: ' + ${post.title}">
+                            Leer más <i class="bi bi-arrow-right" aria-hidden="true"></i>
                         </a>
                     </div>
-                </div>
+                </article>
             </div>
         </div>
 
-        <!-- Paginación simple -->
-        <nav th:if="${posts.totalPages > 1}" class="mt-4">
-            <ul class="pagination justify-content-center">
-                <li th:each="i : ${#numbers.sequence(0, posts.totalPages - 1)}"
-                    th:classappend="${i == posts.number} ? 'active'"
-                    class="page-item">
-                    <a class="page-link" th:href="@{/(page=${i})}" th:text="${i + 1}">1</a>
-                </li>
-            </ul>
-        </nav>
-    </div>
-</section>
-
-<footer th:replace="~{fragments/layout :: footer}"></footer>
-<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
-</body>
-</html>
+        <!-- Paginación anterior/siguiente -->
+        <nav th:if="${posts.totalPages > 1}" class="mt-4" aria-label="Navegación de páginas">
+            <ul class="pagination justify-content-center align-items-center gap-2">
+                <li class="page-item" th:classappend="${posts.first} ? 'disabled'">
+                 

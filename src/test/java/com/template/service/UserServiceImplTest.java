@@ -1,6 +1,6 @@
 package com.template.service;
 
-import com.template.dto.AuthDTOs;
+import com.template.dto.RegisterRequest;
 import com.template.entity.Role;
 import com.template.entity.User;
 import com.template.exception.BadRequestException;
@@ -34,11 +34,11 @@ class UserServiceImplTest {
 
     @InjectMocks private UserServiceImpl userService;
 
-    private AuthDTOs.RegisterRequest validRequest;
+    private RegisterRequest validRequest;
 
     @BeforeEach
     void setUp() {
-        validRequest = new AuthDTOs.RegisterRequest();
+        validRequest = new RegisterRequest();
         validRequest.setUsername("test");
         validRequest.setEmail("test@test.com");
         validRequest.setPassword("123456");

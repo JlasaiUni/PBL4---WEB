@@ -1,103 +1,68 @@
 package com.template.exception;
 
-import lombok.*;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.*;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.validation.FieldError;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.stream.Collectors;
 
-// ── Handler global para la API REST (devuelve JSON) ───────────
-// Sólo aplica a controladores anotados con @RestController, es decir,
-// las rutas /api/**. Las rutas MVC (Thymeleaf) las gestiona
-// MvcExceptionHandler, que renderiza vistas error/*.html.
-
-@RestControllerAdvice(annotations = org.springframework.web.bind.annotation.RestController.class)
+@RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
 
-    @Getter @Setter @Builder
-    static class ErrorResponse {
-        private int status;
-        private String error;
-        private String message;
-        private String path;
-        private LocalDateTime timestamp;
-        private Map<String, String> validationErrors;
-    }
-
-    // 404
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(
             ResourceNotFoundException ex, WebRequest request) {
         return build(HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }
 
-    // 400
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ErrorResponse> handleUnauthorized(
+            UnauthorizedException ex, WebRequest request) {
+        return build(HttpStatus.FORBIDDEN, ex.getMessage(), request);
+    }
+
+
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ErrorResponse> handleBadRequest(
             BadRequestException ex, WebRequest request) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 
-    // 401
-    @ExceptionHandler(UnauthorizedException.class)
-    public ResponseEntity<ErrorResponse> handleUnauthorized(
-            UnauthorizedException ex, WebRequest request) {
-        return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
+    @ExceptionHandler({BadCredentialsException.class, AuthenticationException.class})
+    public ResponseEntity<ErrorResponse> handleAuthenticationFailed(
+            RuntimeException ex, WebRequest request) {
+        return build(HttpStatus.UNAUTHORIZED, "Credenciales incorrectas", request);
     }
 
-    // 403
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponse> handleAccessDenied(
-            AccessDeniedException ex, WebRequest request) {
-        return build(HttpStatus.FORBIDDEN, "Acceso denegado", request);
-    }
-
-    // Errores de validación (@Valid)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(
             MethodArgumentNotValidException ex, WebRequest request) {
-        Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach(error -> {
-            String field = ((FieldError) error).getField();
-            String msg   = error.getDefaultMessage();
-            errors.put(field, msg);
-        });
-
-        ErrorResponse body = ErrorResponse.builder()
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Validation Failed")
-                .message("Errores de validación en la petición")
-                .timestamp(LocalDateTime.now())
-                .validationErrors(errors)
-                .build();
-
-        return ResponseEntity.badRequest().body(body);
+        String msg = ex.getBindingResult().getFieldErrors().stream()
+                .map(e -> e.getField() + ": " + e.getDefaultMessage())
+                .collect(Collectors.joining(", "));
+        return build(HttpStatus.BAD_REQUEST, msg, request);
     }
 
-    // 500 genérico
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneral(Exception ex, WebRequest request) {
         log.error("Error inesperado: {}", ex.getMessage(), ex);
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno del servidor", request);
     }
 
-    // ── Helper ────────────────────────────────────────────────
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String message, WebRequest request) {
-        ErrorResponse body = ErrorResponse.builder()
-                .status(status.value())
-                .error(status.getReasonPhrase())
-                .message(message)
-                .path(request.getDescription(false).replace("uri=", ""))
-                .timestamp(LocalDateTime.now())
-                .build();
-        return ResponseEntity.status(status).body(body);
+        return ResponseEntity.status(status).body(
+                new ErrorResponse(status.value(), message,
+                        request.getDescription(false).replace("uri=", ""),
+                        LocalDateTime.now()));
     }
+
+    public record ErrorResponse(int status, String message, String path, LocalDateTime timestamp) {}
 }

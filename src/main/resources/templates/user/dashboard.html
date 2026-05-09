@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head('Mi Dashboard')}"></head>
 <body class="bg-light-custom">
 
@@ -15,8 +16,8 @@
                 </h2>
                 <p class="text-muted mb-0">Bienvenido a tu panel personal.</p>
             </div>
-            <a th:href="@{/posts/new}" class="btn btn-primary-custom">
-                <i class="bi bi-plus-lg me-1"></i>Nuevo post
+            <a th:href="@{/posts/new}" class="btn btn-primary-custom" aria-label="Crear nuevo post">
+                <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Nuevo post
             </a>
         </div>
 
@@ -65,21 +66,45 @@
         <h4 class="mb-3">Mis posts recientes</h4>
         <div class="row g-3">
             <div th:each="post : ${user.posts}" class="col-md-6">
-                <div class="card card-hover h-100">
+                <div class="card card-hover h-100" th:attr="data-post-id=${post.id}">
                     <div class="card-body">
                         <h6 class="card-title" th:text="${post.title}">Título</h6>
                         <p class="small text-muted mb-2">
                             <span th:if="${post.published}" class="badge bg-success">Publicado</span>
                             <span th:unless="${post.published}" class="badge bg-secondary">Borrador</span>
-                            ·
-                            <span th:text="${#temporals.format(post.createdAt, 'dd/MM/yyyy')}">fecha</span>
+                            &middot;
+                            <time th:datetime="${post.createdAt}"
+                                  th:text="${#temporals.format(post.createdAt, 'dd/MM/yyyy')}">fecha</time>
                         </p>
-                        <a th:href="@{'/posts/' + ${post.id}}" class="btn btn-sm btn-outline-primary">Ver</a>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <a th:href="@{'/posts/' + ${post.id}}"
+                               class="btn btn-sm btn-outline-primary"
+                               th:attr="aria-label='Ver post: ' + ${post.title}">
+                                <i class="bi bi-eye me-1" aria-hidden="true"></i>Ver
+                            </a>
+                            <a th:href="@{'/posts/' + ${post.id} + '/edit'}"
+                               class="btn btn-sm btn-outline-secondary"
+                               th:attr="aria-label='Editar post: ' + ${post.title}">
+                                <i class="bi bi-pencil me-1" aria-hidden="true"></i>Editar
+                            </a>
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-danger"
+                                    th:attr="data-confirm='¿Eliminar el post «' + ${post.title} + '»? Esta acción no se puede deshacer.',
+                                             data-confirm-action='/api/v1/posts/' + ${post.id},
+                                             aria-label='Eliminar post: ' + ${post.title}"
+                                    data-confirm-method="DELETE"
+                                    data-confirm-redirect="/dashboard">
+                                <i class="bi bi-trash me-1" aria-hidden="true"></i>Eliminar
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
             <div th:if="${user.posts.empty}" class="col-12">
-                <div class="alert alert-info">No tienes posts todavía.</div>
+                <div class="alert alert-info" role="alert">
+                    Aún no tienes posts.
+                    <a th:href="@{/posts/new}" class="alert-link">Crea tu primer post</a>.
+                </div>
             </div>
         </div>
 

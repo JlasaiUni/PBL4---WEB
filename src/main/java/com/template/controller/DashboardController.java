@@ -1,6 +1,7 @@
 package com.template.controller;
 
-import com.template.dto.PostDTOs;
+import com.template.dto.CreatePostRequest;
+import com.template.dto.PostResponse;
 import com.template.service.PostService;
 import com.template.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -20,27 +21,23 @@ public class DashboardController {
     private final PostService postService;
     private final UserService userService;
 
-    // ── Home pública ──────────────────────────────────────────
     @GetMapping("/")
     public String home(Model model,
                        @RequestParam(defaultValue = "0") int page,
                        @RequestParam(defaultValue = "6") int size) {
-        Page<PostDTOs.PostResponse> posts =
-                postService.findPublished(PageRequest.of(page, size));
+        Page<PostResponse> posts = postService.findPublished(PageRequest.of(page, size));
         model.addAttribute("posts", posts);
         return "index";
     }
 
-    // ── Dashboard (usuarios autenticados) ─────────────────────
     @GetMapping("/dashboard")
     public String dashboard(@AuthenticationPrincipal UserDetails userDetails,
                             Model model) {
-        userService.findByUsername(userDetails.getUsername())
+        userService.findByUsernameWithPosts(userDetails.getUsername())
                 .ifPresent(u -> model.addAttribute("user", u));
         return "user/dashboard";
     }
 
-    // ── Panel de administración ───────────────────────────────
     @GetMapping("/admin")
     @PreAuthorize("hasRole('ADMIN')")
     public String adminPanel(Model model) {
@@ -48,17 +45,16 @@ public class DashboardController {
         return "admin/panel";
     }
 
-    // ── Posts: listado y formulario ───────────────────────────
     @GetMapping("/posts/new")
     @PreAuthorize("isAuthenticated()")
     public String newPostForm(Model model) {
-        model.addAttribute("postRequest", new PostDTOs.CreatePostRequest());
+        model.addAttribute("postRequest", new CreatePostRequest());
         return "user/post-form";
     }
 
     @PostMapping("/posts")
     @PreAuthorize("isAuthenticated()")
-    public String createPost(@ModelAttribute PostDTOs.CreatePostRequest request,
+    public String createPost(@ModelAttribute CreatePostRequest request,
                              @AuthenticationPrincipal UserDetails userDetails) {
         postService.create(request, userDetails.getUsername());
         return "redirect:/dashboard";
@@ -70,14 +66,17 @@ public class DashboardController {
         return "user/post-detail";
     }
 
-    // ── Búsqueda ──────────────────────────────────────────────
     @GetMapping("/search")
     public String search(@RequestParam String q, Model model,
                          @RequestParam(defaultValue = "0") int page) {
-        Page<PostDTOs.PostResponse> results =
-                postService.search(q, PageRequest.of(page, 10));
+        Page<PostResponse> results = postService.search(q, PageRequest.of(page, 10));
         model.addAttribute("results", results);
         model.addAttribute("query", q);
         return "user/search-results";
+    }
+
+    @GetMapping("/chat")
+    public String chatPage() {
+        return "user/chat";
     }
 }

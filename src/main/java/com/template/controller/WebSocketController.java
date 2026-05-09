@@ -1,6 +1,6 @@
 package com.template.controller;
 
-import com.template.service.impl.PostServiceImpl;
+import com.template.event.PostPublishedEvent;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -16,11 +16,13 @@ import java.time.LocalDateTime;
  * Controlador WebSocket (STOMP).
  *
  * Clientes se suscriben a:
- *   /topic/notifications  → broadcast general
- *   /user/queue/messages  → mensajes privados
+ *   /topic/notifications  -> broadcast general
+ *   /user/queue/messages  -> mensajes privados
+ *   /topic/chat           -> sala de chat publica
  *
- * Envían mensajes a:
- *   /app/chat             → este controller
+ * Envian mensajes a:
+ *   /app/chat     -> chat publico
+ *   /app/private  -> mensaje privado
  */
 @Controller
 @RequiredArgsConstructor
@@ -29,18 +31,31 @@ public class WebSocketController {
 
     private final SimpMessagingTemplate messagingTemplate;
 
-    // ── Chat broadcast ────────────────────────────────────────
+    // Chat broadcast (grupal, abierto a cualquier usuario)
     @MessageMapping("/chat")
     @SendTo("/topic/chat")
     public ChatMessage handleChatMessage(@Payload ChatMessage message,
                                          Principal principal) {
-        message.setSender(principal != null ? principal.getName() : "Anónimo");
+        // Prioridad: 1) usuario autenticado, 2) sender enviado por cliente (invitado),
+        // 3) "Anonimo" como ultimo recurso.
+        String resolvedSender;
+        if (principal != null && principal.getName() != null && !principal.getName().isBlank()) {
+            resolvedSender = principal.getName();
+        } else if (message.getSender() != null && !message.getSender().isBlank()) {
+            resolvedSender = sanitizeName(message.getSender());
+        } else {
+            resolvedSender = "Anonimo";
+        }
+        message.setSender(resolvedSender);
         message.setTimestamp(LocalDateTime.now());
-        log.debug("WS chat: {} → {}", message.getSender(), message.getContent());
+        if (message.getType() == null || message.getType().isBlank()) {
+            message.setType("CHAT");
+        }
+        log.debug("WS chat: {} -> {} ({})", message.getSender(), message.getContent(), message.getType());
         return message;
     }
 
-    // ── Mensaje privado ───────────────────────────────────────
+    // Mensaje privado
     @MessageMapping("/private")
     @SendToUser("/queue/messages")
     public ChatMessage handlePrivateMessage(@Payload ChatMessage message,
@@ -50,9 +65,18 @@ public class WebSocketController {
         return message;
     }
 
-    // ── Escucha eventos de aplicación → broadcast automático ──
+    /** Limpia el nombre proporcionado por un cliente anonimo. */
+    private String sanitizeName(String raw) {
+        String trimmed = raw.trim();
+        if (trimmed.length() > 30) trimmed = trimmed.substring(0, 30);
+        // Quitamos caracteres potencialmente peligrosos pero permitimos
+        // letras (incluido acentos), digitos, espacios y guiones bajos/medios.
+        return trimmed.replaceAll("[<>\"'`]", "");
+    }
+
+    // Escucha eventos de publicacion de posts y los broadcastea
     @EventListener
-    public void onPostPublished(PostServiceImpl.PostPublishedEvent event) {
+    public void onPostPublished(PostPublishedEvent event) {
         NotificationMessage notification = NotificationMessage.builder()
                 .type("NEW_POST")
                 .message("Nuevo post publicado: " + event.getPost().getTitle())
@@ -60,12 +84,11 @@ public class WebSocketController {
                 .timestamp(LocalDateTime.now())
                 .build();
 
-        // Envía a todos los suscriptores de /topic/notifications
         messagingTemplate.convertAndSend("/topic/notifications", notification);
-        log.info("Notificación WS enviada por nuevo post: {}", event.getPost().getTitle());
+        log.info("Notificacion WS enviada por nuevo post: {}", event.getPost().getTitle());
     }
 
-    // ── DTOs de mensajes ──────────────────────────────────────
+    // DTOs internos de mensajes
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor
     public static class ChatMessage {
         private String content;

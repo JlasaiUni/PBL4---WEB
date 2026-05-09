@@ -1,0 +1,12 @@
+{
+  "name": "pbl4-styles",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "sass --style=compressed src/main.scss dist/bootstrap-custom.css --no-source-map",
+    "build:dev": "sass src/main.scss dist/bootstrap-custom.css"
+  },
+  "devDependencies": {
+    "bootstrap": "5.3.3",
+    "sass": "^1.77.0"
+  }
+}

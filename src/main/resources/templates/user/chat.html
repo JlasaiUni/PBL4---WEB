@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Chat grupal en tiempo real')}"></head>
+<body class="bg-light-custom">
+
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<section class="py-5">
+  <div class="container" style="max-width: 760px;">
+
+    <div class="d-flex align-items-center mb-4 fade-in-up">
+      <h2 class="mb-0 me-3">
+        <i class="bi bi-chat-dots-fill text-primary-custom me-2" aria-hidden="true"></i>Chat grupal
+      </h2>
+      <span id="ws-status" class="badge bg-secondary ms-auto" aria-live="polite">Desconectado</span>
+    </div>
+
+    <p class="text-muted small mb-3">
+      Sala publica abierta a todos los visitantes. Cualquiera puede unirse y participar.
+    </p>
+
+    <!-- Selector de nombre para invitados -->
+    <div id="guest-bar"
+         class="card shadow-sm mb-3 d-none"
+         aria-label="Configurar nombre de invitado">
+      <div class="card-body py-2">
+        <form id="guest-form" class="d-flex align-items-center gap-2 flex-wrap" data-no-loading>
+          <label for="guest-name" class="form-label mb-0 small fw-semibold">
+            <i class="bi bi-person-circle me-1" aria-hidden="true"></i>Tu nombre:
+          </label>
+          <input id="guest-name"
+                 type="text"
+                 class="form-control form-control-sm"
+                 style="max-width: 220px;"
+                 maxlength="30"
+                 autocomplete="off"
+                 placeholder="Invitado-1234"/>
+          <button type="submit" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-check-lg me-1" aria-hidden="true"></i>Cambiar
+          </button>
+          <span class="text-muted small ms-auto">Estas como invitado</span>
+        </form>
+      </div>
+    </div>
+
+    <!-- Ventana de mensajes -->
+    <div class="card shadow-sm mb-3">
+      <div class="card-body p-0">
+        <div id="chat-messages"
+             class="p-3"
+             style="height: 420px; overflow-y: auto;"
+             role="log" aria-label="Mensajes del chat" aria-live="polite" aria-relevant="additions">
+          <p class="text-muted small text-center mt-5" id="chat-empty">
+            <i class="bi bi-hourglass-split" aria-hidden="true"></i> Conectando...
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Formulario de envio -->
+    <form id="chat-form" class="d-flex gap-2" novalidate data-no-loading>
+      <label for="chat-input" class="visually-hidden">Escribe un mensaje</label>
+      <input id="chat-input"
+             type="text"
+             class="form-control"
+             placeholder="Escribe un mensaje..."
+             maxlength="500"
+             autocomplete="off"
+             aria-label="Mensaje de chat"
+             aria-required="true"
+             required/>
+      <button type="submit"
+              class="btn btn-primary-custom"
+              id="chat-send"
+              aria-label="Enviar mensaje">
+        <i class="bi bi-send-fill" aria-hidden="true"></i>
+        <span class="ms-1 d-none d-sm-inline">Enviar</span>
+      </button>
+    </form>
+    <p class="form-text mt-1">
+      <span sec:authorize="isAuthenticated()">
+        Conectado como <strong sec:authentication="name">usuario</strong>.
+      </span>
+      <span sec:authorize="!isAuthenticated()">
+        Estas en modo invitado &mdash;
+        <a th:href="@{/auth/login}">inicia sesion</a> o
+        <a th:href="@{/auth/register}">registrate</a> para chatear con tu cuenta.
+      </span>
+      Los mensajes son visibles para todos los usuarios conectados.
+    </p>
+
+  </div>
+</section>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+
+<script th:inline="javascript">
+(function () {
+  'use strict';
+
+  // Nombre del usuario autenticado (vacio si es anonimo).
+  var authName = /*[[${#authentication != null and #authentication.name != 'anonymousUser'} ? ${#authentication.name} : '']]*/ '';
+  var isAuthenticated = !!authName;
+
+  var statusBadge = document.getElementById('ws-status');
+  var messagesBox = document.getElementById('chat-messages');
+  var chatEmpty   = document.getElementById('chat-empty');
+  var chatForm    = document.getElementById('chat-form');
+  var chatInput   = document.getElementById('chat-input');
+  var sendBtn     = document.getElementById('chat-send');
+  var guestBar    = document.getElementById('guest-bar');
+  var guestForm   = document.getElementById('guest-form');
+  var guestInput  = document.getElementById('guest-name');
+
+  // Resolver nombre actual del cliente.
+  // - Autenticados: nombre del usuario.
+  // - Invitados: persistido en localStorage o generado al azar.
+  var currentUser;
+  if (isAuthenticated) {
+    currentUser = authName;
+  } else {
+    currentUser = localStorage.getItem('chatGuestName') || generateGuestName();
+    localStorage.setItem('chatGuestName', currentUser);
+    guestBar.classList.remove('d-none');
+    guestInput.value = currentUser;
+  }
+
+  var stompClient = null;
+  var subscribed = false;
+
+  // ── Conexion STOMP ────────────────────────────────────────
+  function connect() {
+    var socket = new SockJS('/ws');
+    stompClient = Stomp.over(socket);
+    stompClient.debug = null;
+
+    stompClient.connect({}, function () {
+      setStatus('Conectado', 'success');
+
+      // 1) Primero suscribirse para no perder mensajes.
+      stompClient.subscribe('/topic/chat', function (msg) {
+        try {
+          var data = JSON.parse(msg.body);
+          renderMessage(data);
+        } catch (err) {
+          console.error('Mensaje WS invalido', err);
+        }
+      });
+      subscribed = true;
+
+      // 2) Luego anunciar entrada al chat.
+      sendRaw({
+        content: currentUser + ' entro al chat.',
+        sender:  currentUser,
+        type:    'JOIN'
+      });
+
+    }, function () {
+      subscribed = false;
+      setStatus('Desconectado', 'secondary');
+      setTimeout(connect, 5000);
+    });
+  }
+
+  // ── Renderizar mensaje ────────────────────────────────────
+  function renderMessage(msg) {
+    if (chatEmpty && chatEmpty.parentNode) { chatEmpty.remove(); }
+
+    var isOwn    = msg.sender === currentUser;
+    var isSystem = msg.type === 'JOIN' || msg.type === 'LEAVE';
+    var time     = msg.timestamp
+        ? new Date(msg.timestamp).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
+        : new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+
+    var el = document.createElement('div');
+
+    if (isSystem) {
+      el.className = 'text-center text-muted small my-2';
+      el.innerHTML = '<i class="bi bi-person-check me-1" aria-hidden="true"></i>'
+                   + escHtml(msg.content);
+    } else if (isOwn) {
+      el.className = 'd-flex justify-content-end mb-2';
+      el.innerHTML =
+        '<div class="mw-75">'
+        + '<div class="chat-bubble-own rounded-3 px-3 py-2 text-white" '
+        +      'style="background:var(--color-primary);max-width:100%;">'
+        + escHtml(msg.content)
+        + '</div>'
+        + '<div class="text-end text-muted" style="font-size:.75rem;">' + time + '</div>'
+        + '</div>';
+    } else {
+      el.className = 'd-flex mb-2 gap-2';
+      el.innerHTML =
+        '<div class="rounded-circle bg-secondary text-white d-flex align-items-center '
+        +    'justify-content-center flex-shrink-0" style="width:32px;height:32px;font-size:.8rem;"'
+        +    ' aria-hidden="true">'
+        + escHtml((msg.sender || '?').charAt(0).toUpperCase())
+        + '</div>'
+        + '<div class="mw-75">'
+        + '<div class="small text-muted mb-1">' + escHtml(msg.sender || 'Anonimo') + '</div>'
+        + '<div class="bg-white border rounded-3 px-3 py-2" style="max-width:100%;">'
+        + escHtml(msg.content)
+        + '</div>'
+        + '<div class="text-muted" style="font-size:.75rem;">' + time + '</div>'
+        + '</div>';
+    }
+
+    messagesBox.appendChild(el);
+    messagesBox.scrollTop = messagesBox.scrollHeight;
+  }
+
+  // ── Envio de mensaje ──────────────────────────────────────
+  chatForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var text = chatInput.value.trim();
+    if (!text || !stompClient || !stompClient.connected) return;
+
+    sendRaw({
+      content: text,
+      sender:  currentUser,
+      type:    'CHAT'
+    });
+
+    chatInput.value = '';
+    chatInput.focus();
+  });
+
+  // ── Cambio de nick para invitados ─────────────────────────
+  if (guestForm) {
+    guestForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var newName = (guestInput.value || '').trim();
+      if (!newName) return;
+      // Limpieza basica
+      newName = newName.replace(/[<>"'`]/g, '').slice(0, 30);
+      if (!newName || newName === currentUser) return;
+
+      var oldName = currentUser;
+      currentUser = newName;
+      localStorage.setItem('chatGuestName', currentUser);
+
+      if (stompClient && stompClient.connected) {
+        sendRaw({
+          content: oldName + ' ahora se llama ' + currentUser + '.',
+          sender:  currentUser,
+          type:    'JOIN'
+        });
+      }
+    });
+  }
+
+  // ── Helpers ───────────────────────────────────────────────
+  function sendRaw(payload) {
+    if (!stompClient || !stompClient.connected) return;
+    stompClient.send('/app/chat', {}, JSON.stringify(payload));
+  }
+
+  function setStatus(label, colorClass) {
+    statusBadge.textContent = label;
+    statusBadge.className = 'badge bg-' + colorClass + ' ms-auto';
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function generateGuestName() {
+    return 'Invitado-' + Math.floor(1000 + Math.random() * 9000);
+  }
+
+  // ── Aviso de desconexion al salir ─────────────────────────
+  window.addEventListener('beforeunload', function () {
+    if (stompClient && stompClient.connected) {
+      try {
+        sendRaw({
+          content: currentUser + ' salio del chat.',
+          sender:  currentUser,
+          type:    'LEAVE'
+        });
+        stompClient.disconnect();
+      } catch (err) { /* ignore */ }
+    }
+  });
+
+  connect();
+})();
+</script>
+</body>
+</html>

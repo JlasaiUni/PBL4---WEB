@@ -1,9 +1,13 @@
 package com.template.controller;
 
-import com.template.dto.AuthDTOs;
+import com.template.dto.JwtResponse;
+import com.template.dto.LoginRequest;
+import com.template.dto.RegisterRequest;
 import com.template.security.JwtUtils;
 import com.template.security.UserDetailsServiceImpl;
 import com.template.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,13 +24,14 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * API REST para autenticación con JWT.
+ * API REST para autenticacion con JWT.
  * Complementa el formulario MVC tradicional /auth/login.
  */
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Autenticacion", description = "Login y registro via JWT")
 public class AuthApiController {
 
     private final AuthenticationManager authenticationManager;
@@ -35,7 +40,8 @@ public class AuthApiController {
     private final JwtUtils jwtUtils;
 
     @PostMapping("/login")
-    public ResponseEntity<AuthDTOs.JwtResponse> login(@Valid @RequestBody AuthDTOs.LoginRequest request) {
+    @Operation(summary = "Autenticar usuario y obtener token JWT")
+    public ResponseEntity<JwtResponse> login(@Valid @RequestBody LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getUsernameOrEmail(),
@@ -50,7 +56,7 @@ public class AuthApiController {
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList());
 
-        AuthDTOs.JwtResponse body = AuthDTOs.JwtResponse.builder()
+        JwtResponse body = JwtResponse.builder()
                 .token(token)
                 .type("Bearer")
                 .username(userDetails.getUsername())
@@ -61,7 +67,8 @@ public class AuthApiController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody AuthDTOs.RegisterRequest request) {
+    @Operation(summary = "Registrar un nuevo usuario")
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         userService.register(request);
         return ResponseEntity.ok().body("Usuario registrado correctamente");
     }

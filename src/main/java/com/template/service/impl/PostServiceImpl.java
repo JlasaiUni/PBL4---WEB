@@ -1,9 +1,11 @@
 package com.template.service.impl;
 
-import com.template.dto.PostDTOs;
+import com.template.dto.CreatePostRequest;
+import com.template.dto.PostResponse;
 import com.template.entity.Post;
 import com.template.entity.Tag;
 import com.template.entity.User;
+import com.template.event.PostPublishedEvent;
 import com.template.exception.ResourceNotFoundException;
 import com.template.exception.UnauthorizedException;
 import com.template.repository.PostRepository;
@@ -15,6 +17,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +40,8 @@ public class PostServiceImpl implements PostService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
-    public Post create(PostDTOs.CreatePostRequest request, String authorUsername) {
+    @PreAuthorize("isAuthenticated()")
+    public Post create(CreatePostRequest request, String authorUsername) {
         User author = userRepository.findByUsername(authorUsername)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario", "username", authorUsername));
 
@@ -52,7 +58,6 @@ public class PostServiceImpl implements PostService {
         Post saved = postRepository.save(post);
         log.info("Post creado por {}: '{}'", authorUsername, saved.getTitle());
 
-        // Publicar evento de aplicación (desacoplado – p.ej. para notificaciones WS)
         if (saved.isPublished()) {
             eventPublisher.publishEvent(new PostPublishedEvent(this, saved));
         }
@@ -68,32 +73,30 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<PostDTOs.PostResponse> findResponseById(Long id) {
-        // Convertimos a DTO dentro de la misma transacción para evitar
-        // LazyInitializationException al acceder a author/tags/comments.
+    public Optional<PostResponse> findResponseById(Long id) {
         return postRepository.findById(id).map(this::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<PostDTOs.PostResponse> findPublished(Pageable pageable) {
+    public Page<PostResponse> findPublished(Pageable pageable) {
         return postRepository.findByPublishedTrueOrderByCreatedAtDesc(pageable)
                 .map(this::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<PostDTOs.PostResponse> search(String query, Pageable pageable) {
+    public Page<PostResponse> search(String query, Pageable pageable) {
         return postRepository.searchByTitle(query, pageable).map(this::toResponse);
     }
 
     @Override
-    public Post update(Long id, PostDTOs.CreatePostRequest request, String currentUsername) {
+    @PreAuthorize("isAuthenticated()")
+    public Post update(Long id, CreatePostRequest request) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Post", "id", id));
 
-        // Sólo el autor o ADMIN puede editar
-        if (!post.getAuthor().getUsername().equals(currentUsername)) {
+        if (!isAdmin() && !post.getAuthor().getUsername().equals(currentUsername())) {
             throw new UnauthorizedException("No tienes permiso para editar este post");
         }
 
@@ -106,21 +109,22 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public void delete(Long id, String currentUsername) {
+    @PreAuthorize("isAuthenticated()")
+    public void delete(Long id) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Post", "id", id));
 
-        if (!post.getAuthor().getUsername().equals(currentUsername)) {
+        if (!isAdmin() && !post.getAuthor().getUsername().equals(currentUsername())) {
             throw new UnauthorizedException("No tienes permiso para eliminar este post");
         }
 
         postRepository.delete(post);
-        log.info("Post eliminado: {} por {}", id, currentUsername);
+        log.info("Post eliminado: {} por {}", id, currentUsername());
     }
 
     @Override
-    public PostDTOs.PostResponse toResponse(Post post) {
-        return PostDTOs.PostResponse.builder()
+    public PostResponse toResponse(Post post) {
+        return PostResponse.builder()
                 .id(post.getId())
                 .title(post.getTitle())
                 .content(post.getContent())
@@ -134,22 +138,24 @@ public class PostServiceImpl implements PostService {
                 .build();
     }
 
-    // ── Helpers ──────────────────────────────────────────────
+    // Helpers de seguridad
+    private String currentUsername() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        return (auth != null) ? auth.getName() : "anonymous";
+    }
+
+    private boolean isAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+    }
+
+    // Helpers de dominio
     private Set<Tag> resolveTags(Set<String> tagNames) {
         if (tagNames == null) return new HashSet<>();
         return tagNames.stream()
                 .map(name -> tagRepository.findByName(name)
                         .orElseGet(() -> tagRepository.save(new Tag(null, name, new HashSet<>()))))
                 .collect(Collectors.toSet());
-    }
-
-    // ── Evento interno de aplicación ─────────────────────────
-    public static class PostPublishedEvent extends org.springframework.context.ApplicationEvent {
-        private final Post post;
-        public PostPublishedEvent(Object source, Post post) {
-            super(source);
-            this.post = post;
-        }
-        public Post getPost() { return post; }
     }
 }
