@@ -1,6 +1,5 @@
 package com.template.security;
 
-import com.template.security.JwtUtils;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

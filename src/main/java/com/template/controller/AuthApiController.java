@@ -4,7 +4,6 @@ import com.template.dto.JwtResponse;
 import com.template.dto.LoginRequest;
 import com.template.dto.RegisterRequest;
 import com.template.security.JwtUtils;
-import com.template.security.UserDetailsServiceImpl;
 import com.template.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,7 +35,6 @@ public class AuthApiController {
 
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
-    private final UserDetailsServiceImpl userDetailsService;
     private final JwtUtils jwtUtils;
 
     @PostMapping("/login")
