@@ -1,0 +1,40 @@
+# ── Build output ─────────────────────────────────────────────
+target/
+
+# ── Control de versiones ──────────────────────────────────────
+.git/
+.gitignore
+.github/
+
+# ── IDE y entorno de desarrollo ──────────────────────────────
+.vscode/
+.devcontainer/
+.idea/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
+.factorypath
+
+# ── Maven wrapper (no necesario en Docker) ────────────────────
+.mvn/wrapper/maven-wrapper.jar
+
+# ── Variables de entorno (nunca en la imagen) ─────────────────
+.env
+.env.*
+!.env.example
+
+# ── Logs ─────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── OS ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Documentación ────────────────────────────────────────────
+README.md
+CHANGELOG.md
+docs/

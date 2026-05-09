@@ -16,8 +16,10 @@ Plantilla full-stack lista para usar: Spring Boot 3 · Spring Security 6 · JWT 
 8. [WebSocket](#websocket)
 9. [Roles y permisos](#roles-y-permisos)
 10. [Variables de entorno](#variables-de-entorno)
-11. [Tests](#tests)
-12. [Migraciones Flyway](#migraciones-flyway)
+11. [Docker](#docker)
+12. [DevContainer](#devcontainer)
+13. [Tests](#tests)
+14. [Migraciones Flyway](#migraciones-flyway)
 
 ---
 
@@ -38,12 +40,38 @@ Plantilla full-stack lista para usar: Spring Boot 3 · Spring Security 6 · JWT 
 | Utilidades | Lombok · MapStruct · Spring Cache |
 | Monitorización | Spring Boot Actuator |
 | Build | Maven 3 |
+| Contenedores | Docker + Docker Compose |
+| Entorno de desarrollo | DevContainer (VS Code / Cursor) |
 
 ---
 
 ## Arranque rápido
 
-### Requisitos previos
+### Opción A — Con Docker (recomendada)
+
+Requiere tener [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado y en ejecución.
+
+```bash
+# Clonar
+git clone <repo-url>
+cd PBL4---WEB
+
+# Copiar variables de entorno y ajustar JWT_SECRET
+cp .env.example .env
+
+# Arrancar app + MySQL juntos
+docker compose up --build
+```
+
+La aplicación arranca en **http://localhost:8080**. La primera vez tarda unos minutos (descarga imágenes y compila el proyecto).
+
+Para detener: `Ctrl+C` y luego `docker compose down`.
+
+---
+
+### Opción B — Sin Docker, directo con Maven
+
+Requisitos previos:
 
 - Java 21+
 - Maven 3.9+ (o usar el wrapper `./mvnw`)
@@ -394,6 +422,90 @@ spring.datasource.password=${DB_PASSWORD}
 app.jwt.secret=${JWT_SECRET}
 app.jwt.expiration-ms=${JWT_EXPIRATION_MS:86400000}
 ```
+
+---
+
+## Docker
+
+El proyecto incluye configuración completa para ejecutarse en contenedores.
+
+### Archivos
+
+| Archivo | Descripción |
+|---------|-------------|
+| `Dockerfile` | Build multi-stage: Maven compila, JRE Alpine ejecuta |
+| `docker-compose.yml` | Orquesta los servicios `app` y `db` |
+| `.dockerignore` | Excluye `target/`, `.git/`, IDEs y logs del contexto de build |
+| `.env.example` | Plantilla de variables de entorno |
+| `.env` | Variables reales (no subir al repo, está en `.gitignore`) |
+
+### Servicios
+
+| Servicio | Imagen | Puerto | Descripción |
+|----------|--------|--------|-------------|
+| `app` | Dockerfile local | 8080 | Aplicación Spring Boot |
+| `db` | `mysql:8.0` | 3306 | Base de datos MySQL |
+
+### Comandos útiles
+
+```bash
+# Arrancar en segundo plano
+docker compose up -d --build
+
+# Ver logs de la app
+docker compose logs -f app
+
+# Detener y eliminar contenedores (conserva el volumen de datos)
+docker compose down
+
+# Detener y eliminar contenedores + volumen de datos (reset completo)
+docker compose down -v
+
+# Reconstruir solo la imagen de la app
+docker compose build app
+```
+
+### Variables de entorno para Docker
+
+Copia `.env.example` a `.env` y ajusta los valores antes de arrancar:
+
+| Variable | Descripción |
+|----------|-------------|
+| `MYSQL_ROOT_PASSWORD` | Contraseña de root de MySQL |
+| `SPRING_PROFILES_ACTIVE` | Perfil Spring activo (`prod`) |
+| `JWT_SECRET` | Clave HMAC ≥256 bits para firmar tokens JWT |
+| `JWT_EXPIRATION_MS` | Duración del token de acceso en ms (por defecto 24h) |
+| `JWT_REFRESH_EXPIRATION_MS` | Duración del refresh token en ms (por defecto 7 días) |
+| `JAVA_OPTS` | Opciones de la JVM (por defecto `-Xms256m -Xmx512m`) |
+
+> Genera un JWT_SECRET seguro con: `openssl rand -hex 32`
+
+---
+
+## DevContainer
+
+El proyecto incluye configuración para [Dev Containers](https://containers.dev/), compatible con VS Code y Cursor.
+
+### Requisitos
+
+- Docker Desktop
+- VS Code con la extensión [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) (o Cursor)
+
+### Uso
+
+1. Abre la carpeta del proyecto en VS Code / Cursor
+2. Cuando aparezca la notificación "Reopen in Container", acéptala (o usa `Ctrl+Shift+P` → "Dev Containers: Reopen in Container")
+3. El contenedor se construye automáticamente con Java 21 y todas las extensiones configuradas
+4. Una vez dentro, la app se puede arrancar normalmente con `./mvnw spring-boot:run`
+
+### Extensiones incluidas
+
+- `vscjava.vscode-java-pack` — Soporte completo Java
+- `pivotal.vscode-spring-boot` — Herramientas Spring Boot
+- `redhat.vscode-xml` — Soporte XML/pom.xml
+- `rangav.vscode-thunder-client` — Cliente REST integrado
+- `mtxr.sqltools` + driver MySQL — Explorador de base de datos
+- `eamodio.gitlens` — Git avanzado
 
 ---
 
