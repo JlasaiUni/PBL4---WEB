@@ -27,7 +27,7 @@ USER spring
 WORKDIR /app
 
 # Copiar el JAR desde la etapa de build
-COPY --from=builder /build/target/springboot-fullstack-template-1.0.0.jar app.jar
+COPY --from=builder /build/target/pbl4-plantilla-web-1.0.0.jar app.jar
 
 # Puerto expuesto
 EXPOSE 8080

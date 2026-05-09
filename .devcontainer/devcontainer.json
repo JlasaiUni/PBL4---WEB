@@ -1,5 +1,5 @@
 {
-  "name": "Spring Boot Full-Stack Template",
+  "name": "PBL4 Plantilla Web",
 
   // Usa Docker Compose para levantar app + MySQL juntos
   "dockerComposeFile": ["../docker-compose.yml"],
@@ -9,6 +9,11 @@
   // Imagen base con Java 21 y herramientas de desarrollo
   "image": "mcr.microsoft.com/devcontainers/java:21",
 
+  // Features adicionales: Docker-outside-of-Docker para usar docker/docker compose desde el terminal
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+
   // Monta el código fuente en /workspace dentro del contenedor
   "mounts": [
     "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
@@ -17,7 +22,7 @@
   // Sobrescribe el comando de inicio para desarrollo (no ejecuta el JAR)
   "overrideCommand": true,
 
-  // Instalar dependencias Maven al crear el contenedor
+  // Instalar dependencias Maven al crear el contenedor (usa mvn, disponible en la imagen)
   "postCreateCommand": "mvn dependency:resolve -q && echo '✅ Dependencias Maven resueltas'",
 
   // Extensiones de VS Code / Cursor recomendadas
@@ -26,7 +31,7 @@
       "extensions": [
         "vscjava.vscode-java-pack",
         "vscjava.vscode-spring-initializr",
-        "pivotal.vscode-spring-boot",
+        "vmware.vscode-spring-boot",
         "redhat.vscode-xml",
         "rangav.vscode-thunder-client",
         "mtxr.sqltools",

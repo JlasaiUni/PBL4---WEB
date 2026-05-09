@@ -12,10 +12,10 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.template</groupId>
-    <artifactId>springboot-fullstack-template</artifactId>
+    <groupId>com.pbl4</groupId>
+    <artifactId>pbl4-plantilla-web</artifactId>
     <version>1.0.0</version>
-    <name>Spring Boot Full-Stack Template</name>
+    <name>PBL4 Plantilla Web</name>
     <description>
         Plantilla full-stack: Spring Boot 3 + MVC + JPA + Security 6 + WebSocket +
         Thymeleaf + Bootstrap 5 + Roles/Permisos + JWT

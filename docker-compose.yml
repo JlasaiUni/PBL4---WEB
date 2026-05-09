@@ -1,5 +1,5 @@
 # ============================================================
-#  Docker Compose – Spring Boot Full-Stack Template
+#  Docker Compose – PBL4 Plantilla Web
 #  Servicios: app (Spring Boot 8080) + db (MySQL 8 3306)
 # ============================================================
 
@@ -8,10 +8,10 @@ services:
   # ── Base de datos MySQL ───────────────────────────────────
   db:
     image: mysql:8.0
-    container_name: template_db
+    container_name: pbl4_db
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: template_db
+      MYSQL_DATABASE: pbl4_plantilla_web
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-password}
       MYSQL_USER: ${MYSQL_USER:-appuser}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-password}
@@ -26,21 +26,21 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      - template_net
+      - pbl4_net
 
   # ── Aplicación Spring Boot ───────────────────────────────
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: template_app
+    container_name: pbl4_app
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
-      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/template_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/pbl4_plantilla_web?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-password}
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
@@ -52,7 +52,7 @@ services:
     ports:
       - "8080:8080"
     networks:
-      - template_net
+      - pbl4_net
 
 # ── Volúmenes ─────────────────────────────────────────────
 volumes:
@@ -61,5 +61,5 @@ volumes:
 
 # ── Redes ────────────────────────────────────────────────
 networks:
-  template_net:
+  pbl4_net:
     driver: bridge

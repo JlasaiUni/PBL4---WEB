@@ -1,4 +1,4 @@
-# Spring Boot Full-Stack Template
+# PBL4 Plantilla Web
 
 Plantilla full-stack lista para usar: Spring Boot 3 · Spring Security 6 · JWT · JPA · Flyway · WebSocket (STOMP) · Thymeleaf · Bootstrap 5 · Roles/Permisos.
 
@@ -54,7 +54,7 @@ Requiere tener [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 ```bash
 # Clonar
 git clone <repo-url>
-cd PBL4---WEB
+cd PBL4_Plantilla_Web
 
 # Copiar variables de entorno y ajustar JWT_SECRET
 cp .env.example .env
@@ -81,7 +81,7 @@ Requisitos previos:
 ```bash
 # Clonar
 git clone <repo-url>
-cd PBL4---WEB
+cd PBL4_Plantilla_Web
 
 # Arrancar con perfil dev (base de datos H2, no requiere MySQL)
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
@@ -94,7 +94,7 @@ La aplicación arranca en **http://localhost:8080**.
 1. Crea la base de datos:
 
 ```sql
-CREATE DATABASE template_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE pbl4_plantilla_web CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
 2. Configura las variables de entorno (ver sección [Variables de entorno](#variables-de-entorno)).
@@ -109,7 +109,7 @@ CREATE DATABASE template_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 ```bash
 ./mvnw clean package -DskipTests
-java -jar target/springboot-fullstack-template-1.0.0.jar --spring.profiles.active=prod
+java -jar target/pbl4-plantilla-web-1.0.0.jar --spring.profiles.active=prod
 ```
 
 ---
@@ -407,7 +407,7 @@ En producción **no** incluyas secretos en `application.properties`. Usa variabl
 | Variable | Descripción | Ejemplo |
 |----------|-------------|---------|
 | `SPRING_PROFILES_ACTIVE` | Perfil activo | `prod` |
-| `DB_URL` | URL JDBC de la BD | `jdbc:mysql://localhost:3306/template_db` |
+| `DB_URL` | URL JDBC de la BD | `jdbc:mysql://localhost:3306/pbl4_plantilla_web` |
 | `DB_USERNAME` | Usuario de BD | `appuser` |
 | `DB_PASSWORD` | Contraseña de BD | `s3cr3t` |
 | `JWT_SECRET` | Secreto HMAC para firmar tokens (≥256 bits) | `MiClaveSuperSecretaDe64Chars...` |
