@@ -74,7 +74,7 @@ Para detener: `Ctrl+C` y luego `docker compose down`.
 Requisitos previos:
 
 - Java 21+
-- Maven 3.9+ (o usar el wrapper `./mvnw`)
+- Maven 3.9+
 
 ### Perfil `dev` (H2 en memoria, sin MySQL)
 
@@ -84,7 +84,7 @@ git clone <repo-url>
 cd PBL4_Plantilla_Web
 
 # Arrancar con perfil dev (base de datos H2, no requiere MySQL)
-./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
 La aplicación arranca en **http://localhost:8080**.
@@ -102,13 +102,13 @@ CREATE DATABASE pbl4_plantilla_web CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode
 3. Arranca:
 
 ```bash
-./mvnw spring-boot:run -Dspring-boot.run.profiles=prod
+mvn spring-boot:run -Dspring-boot.run.profiles=prod
 ```
 
 ### Build de producción (JAR)
 
 ```bash
-./mvnw clean package -DskipTests
+mvn clean package -DskipTests
 java -jar target/pbl4-plantilla-web-1.0.0.jar --spring.profiles.active=prod
 ```
 
@@ -449,10 +449,19 @@ El proyecto incluye configuración completa para ejecutarse en contenedores.
 ### Comandos útiles
 
 ```bash
-# Arrancar en segundo plano
+# Primera vez o tras cambiar código Java
+docker compose up --build
+
+# El resto de veces (más rápido, usa la imagen ya construida)
+docker compose up
+
+# Arrancar en segundo plano (libera la terminal)
 docker compose up -d --build
 
-# Ver logs de la app
+# Ver estado de los contenedores
+docker compose ps
+
+# Ver logs de la app en tiempo real
 docker compose logs -f app
 
 # Detener y eliminar contenedores (conserva el volumen de datos)
@@ -464,6 +473,23 @@ docker compose down -v
 # Reconstruir solo la imagen de la app
 docker compose build app
 ```
+
+### Atajos interactivos
+
+Mientras `docker compose up` está corriendo en la terminal, puedes pulsar:
+
+| Tecla | Acción |
+|-------|--------|
+| `v` | Abrir Docker Desktop en los contenedores activos |
+| `o` | Ver la configuración completa procesada |
+| `w` | Activar modo Watch (recarga automática al cambiar código) |
+| `d` | Soltar la terminal (los contenedores siguen corriendo en segundo plano) |
+
+### Verificar que la app está corriendo
+
+Abre en el navegador: **http://localhost:8080/actuator/health**
+
+Si responde `{"status":"UP"}`, la aplicación está lista.
 
 ### Variables de entorno para Docker
 
@@ -496,12 +522,14 @@ El proyecto incluye configuración para [Dev Containers](https://containers.dev/
 1. Abre la carpeta del proyecto en VS Code / Cursor
 2. Cuando aparezca la notificación "Reopen in Container", acéptala (o usa `Ctrl+Shift+P` → "Dev Containers: Reopen in Container")
 3. El contenedor se construye automáticamente con Java 21 y todas las extensiones configuradas
-4. Una vez dentro, la app se puede arrancar normalmente con `./mvnw spring-boot:run`
+4. Una vez dentro, la app se puede arrancar normalmente con `mvn spring-boot:run`
+
+> El devcontainer es solo para **desarrollar** (escribir código, depurar, usar extensiones Java). No hace falta abrirlo para probar la app — basta con `docker compose up` y el navegador.
 
 ### Extensiones incluidas
 
 - `vscjava.vscode-java-pack` — Soporte completo Java
-- `pivotal.vscode-spring-boot` — Herramientas Spring Boot
+- `vmware.vscode-spring-boot` — Herramientas Spring Boot
 - `redhat.vscode-xml` — Soporte XML/pom.xml
 - `rangav.vscode-thunder-client` — Cliente REST integrado
 - `mtxr.sqltools` + driver MySQL — Explorador de base de datos
@@ -513,12 +541,12 @@ El proyecto incluye configuración para [Dev Containers](https://containers.dev/
 
 ```bash
 # Ejecutar todos los tests
-./mvnw test
+mvn test
 
 # Solo un test concreto
-./mvnw test -Dtest=PostServiceImplTest
-./mvnw test -Dtest=AuthApiControllerTest
-./mvnw test -Dtest=JwtUtilsTest
+mvn test -Dtest=PostServiceImplTest
+mvn test -Dtest=AuthApiControllerTest
+mvn test -Dtest=JwtUtilsTest
 ```
 
 Los tests usan H2 en memoria — no requieren MySQL.
